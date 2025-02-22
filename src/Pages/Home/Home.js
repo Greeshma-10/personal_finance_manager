@@ -103,6 +103,7 @@ const Home = () => {
   
     const newTransaction = {
       id: Date.now(), // Unique ID for the transaction
+      
       title,
       amount,
       description,

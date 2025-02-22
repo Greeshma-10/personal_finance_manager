@@ -1,7 +1,7 @@
+import backgroundImage from "../../assets/finance.jpg"; // Adjust the path as needed
+
 import { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
-import Particles from "react-tsparticles";
-import { loadFull } from "tsparticles";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { Link, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
@@ -58,37 +58,16 @@ const Login = () => {
   };
 
   return (
-    <div style={{ position: "relative", overflow: "hidden" }}>
-      <Particles
-        id="tsparticles"
-        init={async (engine) => await loadFull(engine)}
-        options={{
-          background: { color: { value: "#000" } },
-          fpsLimit: 60,
-          particles: {
-            number: { value: 200, density: { enable: true, value_area: 800 } },
-            color: { value: "#ffcc00" },
-            shape: { type: "circle" },
-            opacity: { value: 0.5, random: true },
-            size: { value: 3, random: { enable: true, minimumValue: 1 } },
-            move: { enable: true, speed: 2 },
-          },
-          detectRetina: true,
-        }}
-        style={{
-          position: "absolute",
-          zIndex: -1,
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
-      />
-
-      <Container className="mt-5" style={{ position: "relative", zIndex: 2 }}>
+    
+    <div style={{ backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center", backgroundColor: "#000", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      
+      <Container className="p-4" style={{ maxWidth: "400px", backgroundColor: "rgba(0, 0, 0, 0.5)", borderRadius: "10px", boxShadow: "0px 4px 10px rgba(255,255,255,0.2)" }}>
+        
         <Row>
-          <Col md={{ span: 6, offset: 3 }}>
-            <h1 className="text-center mt-5">
+          <Col>
+            <h1 className="text-center">
               <AccountBalanceWalletIcon sx={{ fontSize: 40, color: "white" }} />
             </h1>
             <h2 className="text-white text-center">Login</h2>
@@ -116,19 +95,13 @@ const Login = () => {
               </Form.Group>
 
               <div className="mt-4 text-center">
-                <Link to="/forgotPassword" className="text-white">
-                  Forgot Password?
-                </Link>
+                <Link to="/forgotPassword" className="text-white">Forgot Password?</Link>
 
-                <Button
-                  type="submit"
-                  className="text-center mt-3 btnStyle"
-                  disabled={loading}
-                >
+                <Button type="submit" className="mt-3 w-100" disabled={loading}>
                   {loading ? "Signing in…" : "Login"}
                 </Button>
 
-                <p className="mt-3" style={{ color: "#9d9494" }}>
+                <p className="mt-3 text-white">
                   Don't Have an Account?{" "}
                   <Link to="/register" className="text-white">Register</Link>
                 </p>

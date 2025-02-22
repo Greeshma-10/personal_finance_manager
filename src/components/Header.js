@@ -3,8 +3,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Navbar, Nav, Button } from 'react-bootstrap';
 import "./style.css";
 import { useNavigate } from 'react-router-dom';
-import Particles from "react-tsparticles";
-import { loadFull } from "tsparticles";
+// import Particles from "react-tsparticles";
+// import { loadFull } from "tsparticles";
 const Header = () => {
   
 const navigate = useNavigate();
@@ -35,7 +35,7 @@ const navigate = useNavigate();
 
   const particlesInit = useCallback(async (engine) => {
     // console.log(engine);
-    await loadFull(engine);
+    //await loadFull(engine);
   }, []);
 
   const particlesLoaded = useCallback(async (container) => {
@@ -45,10 +45,10 @@ const navigate = useNavigate();
   return (
     <>
     <div style={{ position: 'relative', overflow: 'hidden' }}>
-      <Particles
-        id="tsparticles"
-        init={particlesInit}
-        loaded={particlesLoaded}
+     {/* <Particles
+     //   id="tsparticles"
+       // init={particlesInit}
+        //loaded={particlesLoaded}
         options={{
           background: {
             color: {
@@ -110,7 +110,7 @@ const navigate = useNavigate();
           right: 0,
           bottom: 0,
         }}
-      />
+      /> */}
     <Navbar className="navbarCSS" collapseOnSelect expand="lg" style={{position: 'relative', zIndex: "2 !important"}}>
       {/* <Navbar className="navbarCSS" collapseOnSelect expand="lg" bg="dark" variant="dark"> */}
         <Navbar.Brand href="/" className="text-white navTitle">Personal Finance Manager</Navbar.Brand>
