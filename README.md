@@ -18,7 +18,7 @@ The **Personal Finance Manager** is a web application built using the **MERN sta
 
 ## 📸 Screenshots
 ### **1. Login Page**
-![Login](https://raw.githubusercontent.com/Greeshma-10/personal_finace_manager/main/docs/login.png)
+![Login](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/login.png?raw=true)
 
 ### **2. Register Page**
 ![Register](https://raw.githubusercontent.com/your-username/repository/main/docs/register.png)
