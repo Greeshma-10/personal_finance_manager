@@ -21,40 +21,17 @@ The **Personal Finance Manager** is a web application built using the **MERN sta
 ![Login](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/login.png?raw=true)
 
 ### **2. Register Page**
-![Register](https://raw.githubusercontent.com/your-username/repository/main/docs/register.png)
+![Register](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/register.png?raw=true)
 
 ### **3. Dashboard**
-![Dashboard](https://raw.githubusercontent.com/your-username/repository/main/docs/dashboard.png)
+![Dashboard](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/dashboard.png?raw=true)
 
 ### **4. Analytics & Graphs**
-![Analytics](https://raw.githubusercontent.com/your-username/repository/main/docs/analytics.png)
+![Analytics](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/analytics.png?raw=true)
+![Analytics](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/graphs.png?raw=true)
 
 ### **5. Transaction Filters**
-![Filters](https://raw.githubusercontent.com/your-username/repository/main/docs/filters.png)
-
-## 🔧 Installation
-To set up and run this project locally, follow these steps:
-
-### **1. Clone the Repository**
-```sh
-git clone https://github.com/your-username/personal-finance-manager.git
-cd personal-finance-manager
-```
-
-### **2. Install Dependencies**
-#### **Frontend**
-```sh
-cd client
-npm install
-npm start
-```
-
-#### **Backend**
-```sh
-cd server
-npm install
-npm start
-```
+![Filters](https://github.com/Greeshma-10/personal_finance_manager/blob/main/docs/filter.png?raw=true)
 
 ## 💡 Usage
 1. **Sign Up or Login** to your account.
@@ -62,16 +39,6 @@ npm start
 3. **View Dashboard** for a summary of income and expenses.
 4. **Apply Filters** to analyze transactions.
 5. **Check Graphs & Reports** for insights.
-
-## 🤝 Contributing
-Contributions are welcome! If you'd like to improve this project:
-1. Fork the repository.
-2. Create a new branch (`feature-name`).
-3. Commit your changes and push.
-4. Open a Pull Request.
-
-## 📜 License
-This project is licensed under the MIT License.
 
 ## ⭐ Show Your Support
 If you found this project useful, please give it a ⭐ on GitHub!
