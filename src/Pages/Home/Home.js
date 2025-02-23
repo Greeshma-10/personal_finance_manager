@@ -99,6 +99,11 @@ const Home = () => {
       return;
     }
   
+    if (!cUser || !cUser.email) {
+      toast.error("User not found. Please log in again.", toastOptions);
+      return;
+    }
+  
     setLoading(true);
   
     const newTransaction = {
@@ -136,38 +141,85 @@ const Home = () => {
     setStartDate(null);
     setEndDate(null);
     setFrequency("7");
+    setRefresh(!refresh); // Trigger re-fetch
   };
-
-
   
-
-
   useEffect(() => {
-
     const fetchAllTransactions = async () => {
+      setLoading(true);
+    
       try {
-        setLoading(true);
-        console.log(cUser._id, frequency, startDate, endDate, type);
-        const { data } = await axios.post(getTransactions, {
-          userId: cUser._id,
-          frequency: frequency,
-          startDate: startDate,
-          endDate: endDate,
-          type: type,
-        });
-        console.log(data);
-  
-        setTransactions(data.transactions);
-  
-        setLoading(false);
-      } catch (err) {
-        // toast.error("Error please Try again...", toastOptions);
-        setLoading(false);
+        
+        const storedTransactions = JSON.parse(localStorage.getItem("transactions")) || [];
+        console.log("All Transactions from localStorage:", storedTransactions);
+    
+        let filteredTransactions = storedTransactions.filter(txn => txn.userId === cUser._id);
+        console.log("Transactions after filtering by userId:", filteredTransactions);
+    
+        // Apply Type Filter
+        if (type !== "all") {
+          filteredTransactions = filteredTransactions.filter(txn => txn.transactionType === type);
+          console.log(`Transactions after filtering by type (${type}):`, filteredTransactions);
+        }
+    
+        // Apply Date Filters
+        const today = new Date();
+        if (frequency !== "custom") {
+          let startDate = new Date(); // Today
+          startDate.setDate(startDate.getDate() - parseInt(frequency));
+          startDate.setHours(0, 0, 0, 0); // Normalize start time
+        
+          let endDate = new Date(); // Today, end of the day
+          endDate.setHours(23, 59, 59, 999);
+        
+          console.log(`Filtering transactions from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+          transactions.forEach(txn => {
+            console.log(`🔍 Checking Transaction: ${new Date(txn.date + "T00:00:00").toISOString()} Original: ${txn.date}`);
+          });
+          
+        
+          const filteredTransactions = transactions.filter(txn => {
+            const txnDate = new Date(txn.date + "T00:00:00"); // Ensure it's treated as local time
+            return txnDate >= startDate && txnDate <= endDate;
+          });
+          
+        
+        
+          console.log("Transactions after filtering by frequency:", filteredTransactions);
+        
+        
+        
+        
+        
+        } else if (startDate && endDate) {
+          let start = new Date(startDate);
+          let end = new Date(endDate);
+          end.setHours(23, 59, 59, 999); // Ensure transactions on the end date are included
+          
+          console.log(`Filtering transactions between ${start.toISOString()} and ${end.toISOString()}`);
+        
+          filteredTransactions = filteredTransactions.filter(txn => {
+            const txnDate = new Date(txn.date);
+            return txnDate >= start && txnDate <= end;
+          });
+          console.log("Transactions after filtering by custom date range:", filteredTransactions);
+        }
+        
+    
+        setTransactions(filteredTransactions);
+        console.log("Final transactions set in state:", filteredTransactions);
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
       }
+    
+      setLoading(false);
     };
-
+  
     fetchAllTransactions();
-  }, [refresh, frequency, endDate, type, startDate]);
+  }, [refresh, frequency, type, startDate, endDate]);
+  
+  
+  
 
   const handleTableClick = (e) => {
     setView("table");
@@ -187,9 +239,9 @@ const Home = () => {
         </>
       ) : (
         <>
-          <Container
-            style={{ position: "relative", zIndex: "2 !important", backgroundColor:'black'  }}
-            className="mt-3"
+          <Container 
+            style={{ position: "relative", zIndex: "2 !important", backgroundColor:'#2D336B'  }}
+            className="mt-3 full-screen-container"
           >
             <div className="filterRow">
               <div className="text-white">
@@ -239,6 +291,8 @@ const Home = () => {
                   }`}
                 />
               </div>
+              {/* Display selected filter options */}
+
 
               <div>
                 <Button onClick={handleShow} className="addNew">
@@ -345,6 +399,42 @@ const Home = () => {
               </div>
             </div>
             <br style={{ color: "white" }}></br>
+            {transactions.length > 0 && frequency !== "all" && type !== "all" && (
+  <div style={{ textAlign: "center", color: "white", margin: "20px 0" }}>
+    <h4 style={{ fontWeight: "bold", marginBottom: "15px" }}>Filtered Transactions</h4>
+
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "10px",
+      backgroundColor: "#ddd",
+      padding: "20px",
+      borderRadius: "10px",
+      maxWidth: "500px",
+      margin: "auto",
+      boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)"
+    }}>
+      {transactions.map((txn) => (
+        <div key={txn._id} style={{
+          backgroundColor: "#2D336B",
+          padding: "10px 15px",
+          borderRadius: "8px",
+          width: "100%",
+          textAlign: "center",
+          color: "#fff",
+          fontSize: "16px",
+          fontWeight: "500"
+        }}>
+          {txn.title} - ₹{txn.amount} ({txn.transactionType})
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
+
 
             {frequency === "custom" ? (
               <>
@@ -399,6 +489,8 @@ const Home = () => {
               </>
             )}
             <ToastContainer />
+            
+
           </Container>
         </>
       )}

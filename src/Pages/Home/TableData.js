@@ -61,25 +61,32 @@ const TableData = (props) => {
 
   // Delete transaction and update local storage with undo option
   // Delete a single transaction and update local storage
-const handleDeleteClick = (itemKey) => {
-  const transactionToDelete = transactions.find((transaction) => transaction._id === itemKey);
-  if (!transactionToDelete) return;
-
-  setDeletedTransaction(transactionToDelete); // Store deleted transaction
-  setShowUndo(true);
-
-  const updatedTransactions = transactions.filter((transaction) => transaction._id !== itemKey);
-
-  setTransactions(updatedTransactions);
-  localStorage.setItem("transactions", JSON.stringify(updatedTransactions));
-
-  // Auto-hide undo after 5 seconds
-  setTimeout(() => {
-    setShowUndo(false);
-    setDeletedTransaction(null);
-  }, 5000);
-};
-
+  const handleDeleteClick = (itemId) => {
+    console.log("Attempting to delete transaction with ID:", itemId);
+    
+    const transactionToDelete = transactions.find((transaction) => transaction.id === itemId);
+    if (!transactionToDelete) {
+      console.error("Invalid itemId!");
+      return;
+    }
+  
+    setDeletedTransaction(transactionToDelete); // Store deleted transaction for undo
+    setShowUndo(true);
+  
+    const updatedTransactions = transactions.filter((transaction) => transaction.id !== itemId);
+  
+    setTransactions(updatedTransactions);
+    localStorage.setItem("transactions", JSON.stringify(updatedTransactions));
+  
+    // Auto-hide undo after 5 seconds
+    setTimeout(() => {
+      setShowUndo(false);
+      setDeletedTransaction(null);
+    }, 5000);
+  };
+  
+  
+  
 // Restore only the last deleted transaction
 const handleUndoDelete = () => {
   if (deletedTransaction) {
@@ -97,7 +104,7 @@ const handleUndoDelete = () => {
 
   return (
     <>
-      <Container>
+      <Container >
         {showUndo && (
           <Alert variant="warning" onClose={() => setShowUndo(false)} dismissible>
             Transaction deleted! <Button variant="link" onClick={handleUndoDelete}>Undo</Button>
@@ -130,8 +137,9 @@ const handleUndoDelete = () => {
                     />
                     <DeleteForeverIcon
                       sx={{ color: "red", cursor: "pointer" }}
-                      onClick={() => handleDeleteClick(item._id)}
-                    />
+                      onClick={() => handleDeleteClick(item.id)} // Make sure item.id is correct
+                      />
+
                   </div>
                 </td>
               </tr>
@@ -216,8 +224,10 @@ const handleUndoDelete = () => {
           </Form>
         </Modal.Body>
       </Modal>
+      
     </>
+    
   );
 };
 
-export default TableData;
+export default TableData; 
