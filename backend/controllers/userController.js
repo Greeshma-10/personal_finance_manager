@@ -1,5 +1,28 @@
 import User from "../models/UserSchema.js";
 import bcrypt from "bcrypt";
+import jwt from 'jsonwebtoken';
+
+export const verifyTokenController = (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1]; 
+        if (!token) {
+            return res.status(401).json({ message: "Access Denied. No token provided." });
+        }
+
+        // ✅ Wrap verification in try-catch
+        try {
+            const verified = jwt.verify(token, process.env.SECRET_KEY);
+            return res.status(200).json({ valid: true, user: verified });
+        } catch (error) {
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
+        
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+
 
 export const registerControllers = async (req, res, next) => {
     try{
@@ -49,89 +72,56 @@ export const registerControllers = async (req, res, next) => {
 
 }
 export const loginControllers = async (req, res, next) => {
-    try{
+    try {
         const { email, password } = req.body;
 
-        // console.log(email, password);
-  
-        if (!email || !password){
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Please enter All Fields",
-            }); 
+                message: "Please enter all fields",
+            });
         }
-    
+
         const user = await User.findOne({ email });
-    
-        if (!user){
+
+        if (!user) {
             return res.status(401).json({
                 success: false,
                 message: "User not found",
-            }); 
-        }
-    
-        const isMatch = await bcrypt.compare(password, user.password);
-    
-        if (!isMatch){
-            return res.status(401).json({
-                success: false,
-                message: "Incorrect Email or Password",
-            }); 
+            });
         }
 
-        delete user.password;
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: "Incorrect email or password",
+            });
+        }
+
+        const token = jwt.sign(
+            { userId: user._id, email: user.email }, // Payload
+            process.env.SECRET_KEY?.trim(),          // ✅ Trim any extra spaces
+            { expiresIn: "1h" }                      // Token expiration
+        );
+        
+
+        // ✅ Convert user object to plain JSON, then remove password
+        const userData = user.toObject();
+        delete userData.password;
 
         return res.status(200).json({
             success: true,
             message: `Welcome back, ${user.name}`,
-            user,
+            user: userData,
+            token, // ✅ Send token to frontend
         });
 
-    }
-    catch(err){
+    } catch (err) {
         return res.status(500).json({
             success: false,
             message: err.message,
         });
     }
-}
-
-export const setAvatarController = async (req, res, next)=> {
-    try{
-
-        const userId = req.params.id;
-       
-        const imageData = req.body.image;
-      
-        const userData = await User.findByIdAndUpdate(userId, {
-            isAvatarImageSet: true,
-            avatarImage: imageData,
-        },
-        { new: true });
-
-        return res.status(200).json({
-            isSet: userData.isAvatarImageSet,
-            image: userData.avatarImage,
-          });
-
-
-    }catch(err){
-        next(err);
-    }
-}
-
-export const allUsers = async (req, res, next) => {
-    try{
-        const user = await User.find({_id: {$ne: req.params.id}}).select([
-            "email",
-            "username",
-            "avatarImage",
-            "_id",
-        ]);
-
-        return res.json(user);
-    }
-    catch(err){
-        next(err);
-    }
-}
+};

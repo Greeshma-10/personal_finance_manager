@@ -1,9 +1,6 @@
 import mongoose from "mongoose";
 import validator from "validator";
 
-// User Schema Model - (Name, email, password, creation Date) with validation rules
-//new mongoose.Schema({feild1:{type:dtype,contraint:value},feild2:{type:dtype,contraint:value}})
-//CREATE TABLE USER(name varchar(25) notnull)
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -12,13 +9,16 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: [true, "Email is required"],
-        unique : true,
-        validate : validator.isEmail,
+        unique: true,
+        validate: {
+            validator: (value) => validator.isEmail(value),
+            message: "Invalid email format",
+        },
     },
     password: {
         type: String,
         required: [true, "Password is required"],
-        minlength : [6, "Password Must Be Atleast 6 characters"],
+        minlength: [6, "Password must be at least 6 characters"],
     },
     isAvatarImageSet: {
         type: Boolean,
@@ -26,13 +26,14 @@ const userSchema = new mongoose.Schema({
     },
     avatarImage: {
         type: String,
-        default: ""
+        default: "",
     },
     transactions: {
-        type: [],
+        type: [Object], // Ensures it stores objects (transaction details)
+        default: [],
     },
     createdAt: {
-        type:Date,
+        type: Date,
         default: Date.now,
     },
 });

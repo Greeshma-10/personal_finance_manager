@@ -1,11 +1,10 @@
-import backgroundImage from "../../assets/finance.jpg"; // Adjust the path as needed
-
+import backgroundImage from "../../assets/finance.jpg";
 import { useEffect, useState } from "react";
 import { Container, Form, Button } from "react-bootstrap";
-import "./auth.css";
 import { Link, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import axios from "axios"; // Import axios for API requests
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
@@ -33,7 +32,7 @@ const Register = () => {
     setValues({ ...values, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { name, email, password } = values;
 
@@ -44,29 +43,24 @@ const Register = () => {
 
     setLoading(true);
 
-    // Retrieve existing users from localStorage
-    const existingUsers = JSON.parse(localStorage.getItem("users")) || [];
+    try {
+      const { data } = await axios.post("http://localhost:4000/api/auth/register", {
+        name,
+        email,
+        password,
+      });
 
-    // Check if email is already registered
-    const userExists = existingUsers.find((user) => user.email === email);
-    if (userExists) {
-      toast.error("Email already registered. Please log in.", toastOptions);
+      localStorage.setItem("user", JSON.stringify(data)); // Store token
+      toast.success("Registration successful!", toastOptions);
+
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Registration failed!", toastOptions);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Store new user
-    const newUser = { name, email, password };
-    const updatedUsers = [...existingUsers, newUser];
-
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
-    localStorage.setItem("user", JSON.stringify(newUser)); // Store logged-in user
-
-    toast.success("Registration successful!", toastOptions);
-
-    setTimeout(() => {
-      navigate("/"); // Redirect to homepage after success
-    }, 2000);
   };
 
   return (
@@ -86,53 +80,53 @@ const Register = () => {
         }}
       >
         <Container className="form-container">
-  <h2 className="text-white text-center">Sign Up</h2>
-  <Form onSubmit={handleSubmit}>
-    <Form.Group >
-      <Form.Label className="text-white">Name</Form.Label>
-      <Form.Control
-        type="text"
-        name="name"
-        placeholder="Full name"
-        value={values.name}
-        onChange={handleChange}
-        className="input-field"
-      />
-    </Form.Group>
+          <h2 className="text-white text-center">Sign Up</h2>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group>
+              <Form.Label className="text-white">Name</Form.Label>
+              <Form.Control
+                type="text"
+                name="name"
+                placeholder="Full name"
+                value={values.name}
+                onChange={handleChange}
+                className="input-field"
+              />
+            </Form.Group>
 
-    <Form.Group >
-      <Form.Label className="text-white">Email</Form.Label>
-      <Form.Control
-        type="email"
-        name="email"
-        placeholder="Enter email"
-        value={values.email}
-        onChange={handleChange}
-        className="input-field"
-      />
-    </Form.Group>
+            <Form.Group>
+              <Form.Label className="text-white">Email</Form.Label>
+              <Form.Control
+                type="email"
+                name="email"
+                placeholder="Enter email"
+                value={values.email}
+                onChange={handleChange}
+                className="input-field"
+              />
+            </Form.Group>
 
-    <Form.Group >
-      <Form.Label className="text-white">Password</Form.Label>
-      <Form.Control
-        type="password"
-        name="password"
-        placeholder="Password"
-        value={values.password}
-        onChange={handleChange}
-        className="input-field"
-      />
-    </Form.Group>
+            <Form.Group>
+              <Form.Label className="text-white">Password</Form.Label>
+              <Form.Control
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={values.password}
+                onChange={handleChange}
+                className="input-field"
+              />
+            </Form.Group>
 
-    <Button type="submit" className="mt-3 btn-style" disabled={loading}>
-      {loading ? "Registering..." : "Signup"}
-    </Button>
+            <Button type="submit" className="mt-3 btn-style" disabled={loading}>
+              {loading ? "Registering..." : "Signup"}
+            </Button>
 
-    <p className="mt-2 text-center" style={{ color: "#ccc", fontSize: "14px" }}>
-      Already have an account? <Link to="/login" className="text-white">Login</Link>
-    </p>
-  </Form>
-</Container>
+            <p className="mt-2 text-center" style={{ color: "#ccc", fontSize: "14px" }}>
+              Already have an account? <Link to="/login" className="text-white">Login</Link>
+            </p>
+          </Form>
+        </Container>
 
         <ToastContainer />
       </div>
