@@ -131,6 +131,7 @@ const getUserIdByEmail = async (userEmail) => {
 };
 
 // Function to delete a transaction
+// Function to delete a transaction
 const handleDeleteClick = async (transactionId) => {
   try {
     const userEmail = localStorage.getItem("userEmail"); // ✅ Get stored email
@@ -166,24 +167,43 @@ const handleDeleteClick = async (transactionId) => {
   }
 };
 
-  
-  const handleUndoDelete = async () => {
-    if (!deletedTransaction) return;
-    
-    try {
-      const response = await axios.post("http://localhost:4000/api/v1/addTransaction", deletedTransaction);
-  
+const handleUndoDelete = async () => {
+  if (!deletedTransaction) return;
+
+  try {
+    const userEmail = localStorage.getItem("userEmail");
+
+    if (!userEmail) {
+      console.error("User email not found. Ensure the user is logged in.");
+      return;
+    }
+
+    const userId = await getUserIdByEmail(userEmail);
+
+    if (!userId) {
+      console.error("Failed to fetch userId for email:", userEmail);
+      return;
+    }
+
+    const response = await axios.post("http://localhost:4000/api/v1/restoreTransaction", {
+      transactionId: deletedTransaction._id,
+      userId: userId,
+    });
+
+    if (response.data.success) {
       // Restore the deleted transaction to the state
       setTransactions((prevTransactions) => [...prevTransactions, response.data.transaction]);
-  
+
+      // Hide the undo option and clear the deleted transaction
       setShowUndo(false);
       setDeletedTransaction(null);
-    } catch (error) {
-      console.error("Error restoring transaction:", error);
+    } else {
+      console.error("Failed to restore transaction:", response.data.message);
     }
-  };
-  
- 
+  } catch (error) {
+    console.error("Error restoring transaction:", error);
+  }
+};
 
   // Add New Transaction to MongoDB
   const handleAddSubmit = async (e) => {

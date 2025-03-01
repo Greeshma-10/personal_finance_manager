@@ -38,7 +38,7 @@ export const addTransactionController = async (req, res) => {
 // ✅ GET ALL TRANSACTIONS
 export const getAllTransactionController = async (req, res) => {
   try {
-    const { email, type, frequency, startDate, endDate } = req.query; // ✅ Accept email
+    const { email, type, startDate, endDate } = req.query; // ✅ Accept email, type, startDate, endDate
 
     if (!email) {
       return res.status(400).json({ success: false, message: "Email is required" });
@@ -57,9 +57,7 @@ export const getAllTransactionController = async (req, res) => {
       query.transactionType = type;
     }
 
-    if (frequency !== "custom") {
-      query.date = { $gt: moment().subtract(Number(frequency), "days").toDate() };
-    } else if (startDate && endDate) {
+    if (startDate && endDate) {
       query.date = { $gte: moment(startDate).toDate(), $lte: moment(endDate).toDate() };
     }
 
@@ -69,6 +67,7 @@ export const getAllTransactionController = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 export const getUserIdByEmailController = async (req, res) => {
   try {
     const { email } = req.query;
@@ -88,7 +87,6 @@ export const getUserIdByEmailController = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 export const deleteTransactionController = async (req, res) => {
   try {
@@ -146,3 +144,4 @@ export const updateTransactionController = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+

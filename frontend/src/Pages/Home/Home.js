@@ -26,6 +26,11 @@ const Home = () => {
   const [endDate, setEndDate] = useState(null);
   const [view, setView] = useState("table");
 
+  // New Filters
+  const [category, setCategory] = useState("");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+
   const toastOptions = {
     position: "bottom-right",
     autoClose: 2000,
@@ -75,30 +80,42 @@ const Home = () => {
   // Fetch transactions when cUser is available
   useEffect(() => {
     if (!cUser || !cUser._id) return;
-
+  
     const fetchAllTransactions = async () => {
-      if (!cUser || !cUser._id) return; // Prevent fetching without a valid user
-    
       setLoading(true);
     
       try {
-        const response = await fetch("http://localhost:4000/api/v1/getTransaction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: cUser._id,
-            type,
-            frequency,
-            startDate,
-            endDate,
-          }),
+        console.log("Fetching transactions for:", cUser.email);
+        console.log("Filters:", { type, startDate, endDate, category, minAmount, maxAmount });
+    
+        // ✅ Build query params dynamically (only add non-empty filters)
+        const queryParams = new URLSearchParams({
+          email: cUser.email,
+          ...(type && type !== "all" && { type }),
+          ...(startDate && { startDate: startDate.toISOString() }),
+          ...(endDate && { endDate: endDate.toISOString() }),
+          ...(category && { category }),
+          ...(minAmount && { minAmount: Number(minAmount) }),
+          ...(maxAmount && { maxAmount: Number(maxAmount) }),
         });
+    
+        const url = `http://localhost:4000/api/v1/getTransaction?${queryParams.toString()}`;
+        console.log("Request URL:", url);
+    
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+    
+        console.log("Response status:", response.status);
     
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
     
         const data = await response.json();
+        console.log("Fetched transactions:", data);
+    
         if (data.success) {
           setTransactions(data.transactions);
         } else {
@@ -111,9 +128,9 @@ const Home = () => {
       setLoading(false);
     };
     
-
+        
     fetchAllTransactions();
-  }, [cUser, refresh, frequency, type, startDate, endDate]);
+  }, [cUser, refresh, frequency, type, startDate, endDate, category, minAmount, maxAmount]);
 
   // Modal open/close handlers
   const handleClose = () => setShow(false);
@@ -148,6 +165,8 @@ const Home = () => {
   const handleSetType = (e) => {
     setType(e.target.value);
   };
+
+
 
   // Handle transaction submission
   const handleSubmit = async (e) => {
@@ -206,6 +225,9 @@ const Home = () => {
     setStartDate(null);
     setEndDate(null);
     setFrequency("7");
+    setCategory("");
+    setMinAmount("");
+    setMaxAmount("");
     setRefresh(!refresh);
   };
 
@@ -241,9 +263,8 @@ const Home = () => {
                     value={frequency}
                     onChange={handleChangeFrequency}
                   >
-                    <option value="7">Last Week</option>
-                    <option value="30">Last Month</option>
-                    <option value="365">Last Year</option>
+                    
+                    <option value="365">All</option>
                     <option value="custom">Custom</option>
                   </Form.Select>
                 </Form.Group>
@@ -262,6 +283,7 @@ const Home = () => {
                     <option value="credit">Income</option>
                   </Form.Select>
                 </Form.Group>
+                
               </div>
 
               <div className="text-white iconBtnBox">
