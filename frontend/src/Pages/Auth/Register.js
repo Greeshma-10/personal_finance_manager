@@ -4,7 +4,7 @@ import { Container, Form, Button } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import axios from "axios"; // Import axios for API requests
+import axios from "axios";
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ const Register = () => {
       navigate("/"); // Redirect if already logged in
     }
   }, [navigate]);
-  
+
   const [values, setValues] = useState({
     name: "",
     email: "",
@@ -51,11 +51,15 @@ const Register = () => {
         password,
       });
 
-      localStorage.setItem("user", JSON.stringify(data)); // Store token
+      // Store token and user details just like in the login page
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("userEmail", data.user.email);
+
       toast.success("Registration successful!", toastOptions);
 
       setTimeout(() => {
-        navigate("/");
+        navigate("/"); // Redirect directly to home
       }, 2000);
     } catch (error) {
       toast.error(error.response?.data?.message || "Registration failed!", toastOptions);
@@ -65,73 +69,71 @@ const Register = () => {
   };
 
   return (
-    <>
-      <div
-        className="register-container"
-        style={{
-          backgroundImage: `url(${backgroundImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <Container className="form-container">
-          <h2 className="text-white text-center">Sign Up</h2>
-          <Form onSubmit={handleSubmit}>
-            <Form.Group>
-              <Form.Label className="text-white">Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                placeholder="Full name"
-                value={values.name}
-                onChange={handleChange}
-                className="input-field"
-              />
-            </Form.Group>
+    <div
+      className="register-container" 
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <Container className="form-container" style={{ maxWidth: "400px", backgroundColor: "rgba(0, 0, 0, 0.5)", borderRadius: "10px", boxShadow: "0px 4px 10px rgba(255,255,255,0.2)" }}>
+        <h2 className="text-white text-center">Sign Up</h2>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Label className="text-white">Name</Form.Label>
+            <Form.Control
+              type="text"
+              name="name"
+              placeholder="Full name"
+              value={values.name}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </Form.Group>
 
-            <Form.Group>
-              <Form.Label className="text-white">Email</Form.Label>
-              <Form.Control
-                type="email"
-                name="email"
-                placeholder="Enter email"
-                value={values.email}
-                onChange={handleChange}
-                className="input-field"
-              />
-            </Form.Group>
+          <Form.Group>
+            <Form.Label className="text-white">Email</Form.Label>
+            <Form.Control
+              type="email"
+              name="email"
+              placeholder="Enter email"
+              value={values.email}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </Form.Group>
 
-            <Form.Group>
-              <Form.Label className="text-white">Password</Form.Label>
-              <Form.Control
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={values.password}
-                onChange={handleChange}
-                className="input-field"
-              />
-            </Form.Group>
+          <Form.Group>
+            <Form.Label className="text-white">Password</Form.Label>
+            <Form.Control
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={values.password}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </Form.Group>
 
-            <Button type="submit" className="mt-3 btn-style" disabled={loading}>
-              {loading ? "Registering..." : "Signup"}
-            </Button>
+          <Button type="submit" className="mt-3 btn-style w-100" disabled={loading}>
+            {loading ? "Registering..." : "Signup"}
+          </Button>
 
-            <p className="mt-2 text-center" style={{ color: "#ccc", fontSize: "14px" }}>
-              Already have an account? <Link to="/login" className="text-white">Login</Link>
-            </p>
-          </Form>
-        </Container>
+          <p className="mt-2 text-center" style={{ color: "#ccc", fontSize: "14px" }}>
+            Already have an account? <Link to="/login" className="text-white">Login</Link>
+          </p>
+        </Form>
+      </Container>
 
-        <ToastContainer />
-      </div>
-    </>
+      <ToastContainer />
+    </div>
   );
 };
 
