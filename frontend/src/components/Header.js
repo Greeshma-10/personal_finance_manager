@@ -29,9 +29,15 @@ const navigate = useNavigate();
   }, []);
 
   const handleShowLogout = () => {
-    localStorage.removeItem("user");
-    navigate("/login");
-  }
+    console.log("Before logout, token:", localStorage.getItem("token"));
+    localStorage.removeItem("token");  // Clear token
+    
+    console.log("After logout, token:", localStorage.getItem("token"));
+
+    navigate("/login", { replace: true });
+    window.location.reload();  // ⬅ Force reload to reset state
+};
+
 
   const particlesInit = useCallback(async (engine) => {
     // console.log(engine);

@@ -11,11 +11,12 @@ const Register = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (localStorage.getItem("user")) {
-      navigate("/"); // Redirect if user is already logged in
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/"); // Redirect if already logged in
     }
   }, [navigate]);
-
+  
   const [values, setValues] = useState({
     name: "",
     email: "",

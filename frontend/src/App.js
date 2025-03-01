@@ -10,6 +10,9 @@ import Home from './Pages/Home/Home';
 const App = () => {
   return (
     
+     
+    
+    
       <div className="App" style={{backgroundColor:'grey'}}>
       <BrowserRouter>
         <Routes>

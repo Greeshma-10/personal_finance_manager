@@ -1,127 +1,122 @@
 import User from "../models/UserSchema.js";
 import bcrypt from "bcrypt";
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
-export const verifyTokenController = (req, res) => {
+// ✅ Get user details (Fix req.user issue)
+export const getUserController = async (req, res) => {
     try {
-        const token = req.headers.authorization?.split(" ")[1]; 
+        const token = req.headers.authorization?.split(" ")[1];
         if (!token) {
-            return res.status(401).json({ message: "Access Denied. No token provided." });
+            return res.status(401).json({ success: false, message: "Access Denied. No token provided." });
         }
 
-        // ✅ Wrap verification in try-catch
-        try {
-            const verified = jwt.verify(token, process.env.SECRET_KEY);
-            return res.status(200).json({ valid: true, user: verified });
-        } catch (error) {
-            return res.status(401).json({ message: "Invalid or expired token" });
+        const decoded = jwt.verify(token, process.env.SECRET_KEY.trim());
+        const user = await User.findById(decoded.userId).select("-password");
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
         }
-        
+
+        res.status(200).json({ success: true, user });
     } catch (error) {
-        return res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ success: false, message: "Server error" });
     }
 };
 
-
-
-export const registerControllers = async (req, res, next) => {
-    try{
-        const {name, email, password} = req.body;
-
-        // console.log(name, email, password);
-
-        if(!name || !email || !password){
-            return res.status(400).json({
-                success: false,
-                message: "Please enter All Fields",
-            }) 
+// ✅ Verify token & return user details
+export const verifyTokenController = async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ success: false, message: "Access Denied. No token provided." });
         }
 
-        let user = await User.findOne({email});
+        const verified = jwt.verify(token, process.env.SECRET_KEY.trim());
+        const user = await User.findById(verified.userId).select("-password");
 
-        if(user){
-            return res.status(409).json({
-                success: false,
-                message: "User already Exists",
-            });
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        return res.status(200).json({ success: true, user });
+    } catch (error) {
+        return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    }
+};
+
+// ✅ Register a new user & auto-login
+export const registerControllers = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ success: false, message: "Please enter all fields" });
         }
 
-        //preparing encrypted for storing db
+        let user = await User.findOne({ email });
+
+        if (user) {
+            return res.status(409).json({ success: false, message: "User already exists" });
+        }
+
+        // Encrypt password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // console.log(hashedPassword);
-        let newUser = await User.create({
-            name, 
-            email, 
-            password: hashedPassword, 
-        });
+        // Create user
+        const newUser = await User.create({ name, email, password: hashedPassword });
+
+        // Generate token after registration ✅
+        const token = jwt.sign(
+            { userId: newUser._id, email: newUser.email },
+            process.env.SECRET_KEY.trim(),
+            { expiresIn: "7d" } // Increased expiry
+        );
 
         return res.status(200).json({
             success: true,
-            message: "User Created Successfully",
-            user: newUser
+            message: "User created successfully",
+            user: { _id: newUser._id, name: newUser.name, email: newUser.email },
+            token, // ✅ Auto-login token
         });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
     }
-    catch(err){
-        return res.status(500).json({
-            success: false,
-            message: err.message,
-        });
-    }
+};
 
-}
-export const loginControllers = async (req, res, next) => {
+// ✅ Login user & return token
+export const loginControllers = async (req, res) => {
     try {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Please enter all fields",
-            });
+            return res.status(400).json({ success: false, message: "Please enter all fields" });
         }
 
         const user = await User.findOne({ email });
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: "User not found",
-            });
+            return res.status(401).json({ success: false, message: "Invalid email or password" });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: "Incorrect email or password",
-            });
+            return res.status(401).json({ success: false, message: "Invalid email or password" });
         }
 
+        // Generate token ✅
         const token = jwt.sign(
-            { userId: user._id, email: user.email }, // Payload
-            process.env.SECRET_KEY?.trim(),          // ✅ Trim any extra spaces
-            { expiresIn: "1h" }                      // Token expiration
+            { userId: user._id, email: user.email },
+            process.env.SECRET_KEY.trim(),
+            { expiresIn: "7d" } // Increased expiry time
         );
-        
-
-        // ✅ Convert user object to plain JSON, then remove password
-        const userData = user.toObject();
-        delete userData.password;
 
         return res.status(200).json({
             success: true,
             message: `Welcome back, ${user.name}`,
-            user: userData,
-            token, // ✅ Send token to frontend
+            user: { _id: user._id, name: user.name, email: user.email },
+            token,
         });
-
     } catch (err) {
-        return res.status(500).json({
-            success: false,
-            message: err.message,
-        });
+        return res.status(500).json({ success: false, message: err.message });
     }
 };

@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Button, Container, Form, Modal, Table, Alert } from "react-bootstrap";
+import axios from "axios";
 import moment from "moment";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import "./home.css";
 
-const TableData = (props) => {
-  const [show, setShow] = useState(false);
+const TableData = () => {
   const [transactions, setTransactions] = useState([]);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [currId, setCurrId] = useState(null);
   const [deletedTransaction, setDeletedTransaction] = useState(null);
@@ -22,93 +24,203 @@ const TableData = (props) => {
     transactionType: "",
   });
 
-  // Fetch data from local storage on mount
+  const [newTransaction, setNewTransaction] = useState({
+    title: "",
+    amount: "",
+    description: "",
+    category: "",
+    date: moment().format("YYYY-MM-DD"),
+    transactionType: "Expense",
+  });
+
+  // Fetch transactions from MongoDB
   useEffect(() => {
-    const storedTransactions = JSON.parse(localStorage.getItem("transactions")) || [];
-    setTransactions(storedTransactions);
-  }, [props.data]); 
+    const fetchTransactions = async () => {
+      try {
+        const userEmail = localStorage.getItem("userEmail");
 
-  // Show modal and load transaction data
-  const handleEditClick = (itemKey) => {
-    const editTran = transactions.find((item) => item._id === itemKey);
-    if (editTran) {
-      setCurrId(itemKey);
-      setEditingTransaction(editTran);
-      setValues({
-        title: editTran.title,
-        amount: editTran.amount,
-        description: editTran.description,
-        category: editTran.category,
-        date: moment(editTran.date).format("YYYY-MM-DD"),
-        transactionType: editTran.transactionType,
-      });
-      setShow(true);
-    }
-  };
+        if (!userEmail) {
+          console.error("User email is missing. Please log in.");
+          return;
+        }
 
-  // Update transaction and save to local storage
-  const handleEditSubmit = (e) => {
-    e.preventDefault();
-    const updatedTransactions = transactions.map((transaction) =>
-      transaction._id === currId ? { ...transaction, ...values } : transaction
-    );
+        const response = await axios.get(`http://localhost:4000/api/v1/getTransaction?email=${userEmail}`);
+        setTransactions(response.data.transactions || []);
+      } catch (error) {
+        console.error("Error fetching transactions:", error.response?.data || error.message);
+      }
+    };
+    fetchTransactions();
+  }, []);
 
-    localStorage.setItem("transactions", JSON.stringify(updatedTransactions));
-    setTransactions(updatedTransactions);
-    setShow(false);
-  };
-
-  // Delete transaction and update local storage with undo option
-  // Delete a single transaction and update local storage
-  const handleDeleteClick = (itemId) => {
-    console.log("Attempting to delete transaction with ID:", itemId);
+  // Open Edit Modal and Load Data
+  const handleEditClick = (transactionId) => {
+    console.log("Clicked Edit for:", transactionId);
     
-    const transactionToDelete = transactions.find((transaction) => transaction.id === itemId);
-    if (!transactionToDelete) {
-      console.error("Invalid itemId!");
-      return;
+    const transaction = transactions.find((item) => item._id === transactionId);
+  
+    if (transaction) {
+      console.log("Transaction found:", transaction);
+  
+      setCurrId(transactionId);
+      setEditingTransaction(transaction);
+      setValues({
+        title: transaction.title,
+        amount: transaction.amount,
+        description: transaction.description,
+        category: transaction.category,
+        date: moment(transaction.date).format("YYYY-MM-DD"),
+        transactionType: transaction.transactionType,
+      });
+  
+      setShowEdit(true);
+    } else {
+      console.error("Transaction not found for ID:", transactionId);
     }
-  
-    setDeletedTransaction(transactionToDelete); // Store deleted transaction for undo
-    setShowUndo(true);
-  
-    const updatedTransactions = transactions.filter((transaction) => transaction.id !== itemId);
-  
-    setTransactions(updatedTransactions);
-    localStorage.setItem("transactions", JSON.stringify(updatedTransactions));
-  
-    // Auto-hide undo after 5 seconds
-    setTimeout(() => {
-      setShowUndo(false);
-      setDeletedTransaction(null);
-    }, 5000);
   };
   
-  
-  
-// Restore only the last deleted transaction
-const handleUndoDelete = () => {
-  if (deletedTransaction) {
-    setTransactions((prevTransactions) => {
-      const updatedTransactions = [...prevTransactions, deletedTransaction];
-      localStorage.setItem("transactions", JSON.stringify(updatedTransactions));
-      return updatedTransactions;
-    });
 
-    setShowUndo(false);
-    setDeletedTransaction(null);
+  // Update Transaction in MongoDB
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+  
+    try {
+      const userEmail = localStorage.getItem("userEmail");
+  
+      if (!userEmail) {
+        console.error("User email not found. Ensure the user is logged in.");
+        return;
+      }
+  
+      const userId = await getUserIdByEmail(userEmail);
+  
+      if (!userId) {
+        console.error("Failed to fetch userId for email:", userEmail);
+        return;
+      }
+  
+      const response = await axios.put(
+        `http://localhost:4000/api/v1/updateTransaction/${currId}?userId=${userId}`,
+        values
+      );
+  
+      // Update state with the modified transaction
+      setTransactions((prevTransactions) =>
+        prevTransactions.map((transaction) =>
+          transaction._id === currId ? { ...transaction, ...values } : transaction
+        )
+      );
+  
+      setShowEdit(false);
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+    }
+  };
+  
+
+  // Delete Transaction from MongoDB
+  // Function to get userId by email
+const getUserIdByEmail = async (userEmail) => {
+  try {
+    const response = await axios.get(`http://localhost:4000/api/v1/getUserId?email=${userEmail}`);
+    return response.data.userId; // Extract userId from the response
+  } catch (error) {
+    console.error("Error fetching user ID:", error);
+    return null;
   }
 };
 
+// Function to delete a transaction
+const handleDeleteClick = async (transactionId) => {
+  try {
+    const userEmail = localStorage.getItem("userEmail"); // ✅ Get stored email
+
+    if (!userEmail) {
+      console.error("User email not found. Ensure the user is logged in.");
+      return;
+    }
+
+    const userId = await getUserIdByEmail(userEmail); // ✅ Fetch userId dynamically
+
+    if (!userId) {
+      console.error("Failed to fetch userId for email:", userEmail);
+      return;
+    }
+
+    const response = await axios.delete(
+      `http://localhost:4000/api/v1/deleteTransaction/${transactionId}?userId=${userId}`
+    );
+
+    if (response.status === 200) {
+      console.log("Transaction deleted successfully");
+
+      // Update state after successful deletion
+      setTransactions((prevTransactions) =>
+        prevTransactions.filter((t) => t._id !== transactionId)
+      );
+    } else {
+      console.error("Failed to delete transaction:", response.data);
+    }
+  } catch (error) {
+    console.error("Error deleting transaction:", error);
+  }
+};
+
+  
+  const handleUndoDelete = async () => {
+    if (!deletedTransaction) return;
+    
+    try {
+      const response = await axios.post("http://localhost:4000/api/v1/addTransaction", deletedTransaction);
+  
+      // Restore the deleted transaction to the state
+      setTransactions((prevTransactions) => [...prevTransactions, response.data.transaction]);
+  
+      setShowUndo(false);
+      setDeletedTransaction(null);
+    } catch (error) {
+      console.error("Error restoring transaction:", error);
+    }
+  };
+  
+ 
+
+  // Add New Transaction to MongoDB
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const userEmail = localStorage.getItem("userEmail");
+      const transactionData = { ...newTransaction, email: userEmail };
+
+      const response = await axios.post("http://localhost:4000/api/v1/addTransaction", transactionData);
+
+      setTransactions((prevTransactions) => [...prevTransactions, response.data.transaction]);
+
+      setShowAdd(false);
+      setNewTransaction({
+        title: "",
+        amount: "",
+        description: "",
+        category: "",
+        date: moment().format("YYYY-MM-DD"),
+        transactionType: "Expense",
+      });
+    } catch (error) {
+      console.error("Error adding transaction:", error);
+    }
+  };
 
   return (
     <>
-      <Container >
+      <Container>
         {showUndo && (
           <Alert variant="warning" onClose={() => setShowUndo(false)} dismissible>
             Transaction deleted! <Button variant="link" onClick={handleUndoDelete}>Undo</Button>
           </Alert>
         )}
+
+        
+
         <Table responsive="md" className="data-table">
           <thead>
             <tr>
@@ -121,112 +233,92 @@ const handleUndoDelete = () => {
             </tr>
           </thead>
           <tbody className="text-white">
-            {transactions.map((item) => (
-              <tr key={item._id}>
-                <td>{moment(item.date).format("YYYY-MM-DD")}</td>
-                <td>{item.title}</td>
-                <td>{item.amount}</td>
-                <td>{item.transactionType}</td>
-                <td>{item.category}</td>
-                <td>
-                  <div className="icons-handle">
-                    <EditNoteIcon
-                      sx={{ cursor: "pointer" }}
-                      onClick={() => handleEditClick(item._id)}
-                    />
-                    <DeleteForeverIcon
-                      sx={{ color: "red", cursor: "pointer" }}
-                      onClick={() => handleDeleteClick(item.id)} // Make sure item.id is correct
-                      />
-
-                  </div>
-                </td>
+            {transactions && transactions.length > 0 ? (
+              transactions.map((item) => (
+                <tr key={item._id}>
+                  <td>{moment(item.date).format("YYYY-MM-DD")}</td>
+                  <td>{item.title}</td>
+                  <td>{item.amount}</td>
+                  <td>{item.transactionType}</td>
+                  <td>{item.category}</td>
+                  <td>
+                    <EditNoteIcon sx={{ cursor: "pointer" }} onClick={() => handleEditClick(item._id)} />
+                    <DeleteForeverIcon sx={{ color: "red", cursor: "pointer" }} onClick={() => handleDeleteClick(item._id)} />
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center">No transactions found</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </Table>
       </Container>
 
-      {/* Edit Modal */}
-      <Modal show={show} onHide={() => setShow(false)} centered>
+      {/* Add Transaction Modal */}
+      <Modal show={showAdd} onHide={() => setShowAdd(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Update Transaction Details</Modal.Title>
+          <Modal.Title>Add New Transaction</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Form onSubmit={handleEditSubmit}>
+          <Form onSubmit={handleAddSubmit}>
             <Form.Group className="mb-3">
               <Form.Label>Title</Form.Label>
-              <Form.Control
-                name="title"
-                type="text"
-                value={values.title}
-                onChange={(e) => setValues({ ...values, title: e.target.value })}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Amount</Form.Label>
-              <Form.Control
-                name="amount"
-                type="number"
-                value={values.amount}
-                onChange={(e) => setValues({ ...values, amount: e.target.value })}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Category</Form.Label>
-              <Form.Select
-                name="category"
-                value={values.category}
-                onChange={(e) => setValues({ ...values, category: e.target.value })}
-              >
-                <option value="">Select a category</option>
-                <option value="Groceries">Groceries</option>
-                <option value="Rent">Rent</option>
-                <option value="Salary">Salary</option>
-                <option value="Food">Food</option>
-                <option value="Medical">Medical</option>
-                <option value="Utilities">Utilities</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Transportation">Transportation</option>
-                <option value="Other">Other</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                type="text"
-                name="description"
-                value={values.description}
-                onChange={(e) => setValues({ ...values, description: e.target.value })}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Transaction Type</Form.Label>
-              <Form.Select
-                name="transactionType"
-                value={values.transactionType}
-                onChange={(e) => setValues({ ...values, transactionType: e.target.value })}
-              >
-                <option value="Credit">Credit</option>
-                <option value="Expense">Expense</option>
-              </Form.Select>
+              <Form.Control type="text" value={newTransaction.title} onChange={(e) => setNewTransaction({ ...newTransaction, title: e.target.value })} />
             </Form.Group>
 
             <Modal.Footer>
-              <Button variant="secondary" onClick={() => setShow(false)}>Close</Button>
-              <Button variant="primary" type="submit">Submit</Button>
+              <Button variant="secondary" onClick={() => setShowAdd(false)}>Close</Button>
+              <Button variant="primary" type="submit">Add</Button>
             </Modal.Footer>
           </Form>
         </Modal.Body>
       </Modal>
-      
+      {/* Edit Transaction Modal */}
+<Modal show={showEdit} onHide={() => setShowEdit(false)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>Edit Transaction</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    <Form onSubmit={handleEditSubmit}>
+      <Form.Group className="mb-3">
+        <Form.Label>Title</Form.Label>
+        <Form.Control 
+          type="text" 
+          value={values.title} 
+          onChange={(e) => setValues({ ...values, title: e.target.value })} 
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-3">
+        <Form.Label>Amount</Form.Label>
+        <Form.Control 
+          type="number" 
+          value={values.amount} 
+          onChange={(e) => setValues({ ...values, amount: e.target.value })} 
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-3">
+        <Form.Label>Category</Form.Label>
+        <Form.Control 
+          type="text" 
+          value={values.category} 
+          onChange={(e) => setValues({ ...values, category: e.target.value })} 
+        />
+      </Form.Group>
+
+      <Modal.Footer>
+        <Button variant="secondary" onClick={() => setShowEdit(false)}>Close</Button>
+        <Button variant="primary" type="submit">Save Changes</Button>
+      </Modal.Footer>
+    </Form>
+  </Modal.Body>
+</Modal>
+
     </>
-    
   );
 };
 
-export default TableData; 
+export default TableData;
