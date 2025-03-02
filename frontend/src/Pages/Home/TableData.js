@@ -371,19 +371,6 @@ const handleHardDelete = async (transactionId) => {
           />
         </Alert>
       )}
-        {selectedTransactions.length > 0 && (
-        <Button
-          variant="danger"
-          className="mb-3"
-          onClick={handleBulkDelete}
-        >
-          Delete Selected ({selectedTransactions.length})
-        </Button>
-      )}
-
-
-
-        
 
 <Table responsive="md" className="data-table">
   <thead>
@@ -432,6 +419,15 @@ const handleHardDelete = async (transactionId) => {
     )}
   </tbody>
 </Table>
+
+{selectedTransactions.length > 0 && (
+        <Button className="mb-3 text-center bg-blue-500 hover:bg-blue-700 text-white"
+          variant="primary"
+          onClick={handleBulkDelete}
+        >
+          Delete Selected ({selectedTransactions.length})
+        </Button>
+      )}
 
       </Container>
      
