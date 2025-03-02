@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Container, Form, Modal, Table, Alert } from "react-bootstrap";
+import { Button, Container, Form, Modal, Table, Alert,ProgressBar } from "react-bootstrap";
 import axios from "axios";
 import moment from "moment";
 import EditNoteIcon from "@mui/icons-material/EditNote";
@@ -15,6 +15,11 @@ const TableData = () => {
   const [deletedTransaction, setDeletedTransaction] = useState(null);
   const [showUndo, setShowUndo] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState([]);
+  const [countdown, setCountdown] = useState(30); // ⏳ 30-second timer
+  const [deletedTransactions, setDeletedTransactions] = useState([null]);
+
+
+
 
 
   const [values, setValues] = useState({
@@ -151,53 +156,48 @@ const handleSelectAll = () => {
 
 const handleBulkDelete = async () => {
   if (selectedTransactions.length === 0) {
-    console.error("No transactions selected for deletion.");
+    alert("No transactions selected for deletion.");
+    return;
+  }
+
+  if (!window.confirm("⚠️ Are you sure? This action is irreversible and will permanently delete the selected transactions.")) {
     return;
   }
 
   try {
     const userEmail = localStorage.getItem("userEmail");
-
     if (!userEmail) {
-      console.error("User email not found. Ensure the user is logged in.");
+      console.error("User email not found.");
       return;
     }
 
     const userId = await getUserIdByEmail(userEmail);
-
     if (!userId) {
-      console.error("Failed to fetch userId for email:", userEmail);
+      console.error("Failed to fetch userId.");
       return;
     }
 
-    console.log("Deleting transactions:", selectedTransactions);
-
-    const response = await axios.put(
-      `http://localhost:4000/api/v1/deleteTransactions`, // New API route
-      { userId, transactionIds: selectedTransactions }, // Send multiple transaction IDs
-      { headers: { "Content-Type": "application/json" } }
-    );
+    // 🔥 Send DELETE request
+    const response = await axios.delete(`http://localhost:4000/api/v1/deleteTransactions`, {
+      data: { userId, transactionIds: selectedTransactions },
+      headers: { "Content-Type": "application/json" },
+    });
 
     if (response.status === 200) {
-      console.log("Transactions deleted successfully");
+      console.log("✅ Transactions permanently deleted.");
 
-      // Remove deleted transactions from UI
-      setTransactions((prevTransactions) =>
-        prevTransactions.filter((t) => !selectedTransactions.includes(t._id))
-      );
-
-      // Clear selection
+      // 🔥 Remove deleted transactions from UI
+      setTransactions((prev) => prev.filter((t) => !selectedTransactions.includes(t._id)));
       setSelectedTransactions([]);
-    } else {
-      console.error("Failed to delete transactions:", response.data);
     }
   } catch (error) {
-    console.error("Error deleting transactions:", error.response?.data || error.message);
+    console.error("❌ Error permanently deleting transactions:", error);
+    alert("Failed to delete transactions. Please try again.");
   }
 };
 
 
-// Function to delete a transaction
+
 const handleDeleteClick = async (transactionId) => {
   try {
     const userEmail = localStorage.getItem("userEmail");
@@ -214,33 +214,38 @@ const handleDeleteClick = async (transactionId) => {
       return;
     }
 
-    console.log("Sending delete request with:", { userId, transactionId });
+    console.log("Soft deleting transaction:", transactionId);
 
-    // ✅ Ensure PUT request has correct data
+    // ✅ Soft delete: Mark transaction as `isDeleted: true`
     const response = await axios.put(
-      `http://localhost:4000/api/v1/deleteTransaction/${transactionId}`,
-      { userId }, // Send userId in the request body
-      { headers: { "Content-Type": "application/json" } } // Ensure JSON format
+      `http://localhost:4000/api/v1/softDeleteTransaction/${transactionId}`,
+      { userId }, 
+      { headers: { "Content-Type": "application/json" } }
     );
 
     if (response.status === 200) {
-      console.log("Transaction deleted successfully");
+      console.log("Transaction marked as deleted.");
 
+      // ✅ Store deleted transaction for Undo
       setDeletedTransaction(response.data.transaction);
       setShowUndo(true);
 
-      // ✅ Remove from UI
-      setTransactions((prevTransactions) =>
-        prevTransactions.filter((t) => t._id !== transactionId)
-      );
+      // ✅ Remove transaction from UI
+      setTransactions((prev) => prev.filter((t) => t._id !== transactionId));
+
+      // ✅ Auto-delete permanently after 30s
+      setTimeout(() => {
+        if (deletedTransaction) {
+          handleHardDelete(transactionId);
+        }
+      }, 30000); // 30 seconds
     } else {
-      console.error("Failed to delete transaction:", response.data);
+      console.error("Failed to soft delete transaction:", response.data);
     }
   } catch (error) {
     console.error("Error deleting transaction:", error.response?.data || error.message);
   }
 };
-
 
 const handleUndoDelete = async () => {
   if (!deletedTransaction) return;
@@ -260,19 +265,21 @@ const handleUndoDelete = async () => {
       return;
     }
 
-    // ✅ Restore the soft-deleted transaction
+    console.log("Restoring transaction:", deletedTransaction._id);
+
+    // ✅ Restore soft-deleted transaction
     const response = await axios.put("http://localhost:4000/api/v1/restoreTransaction", {
       transactionId: deletedTransaction._id,
       userId: userId,
     });
 
     if (response.data.success) {
-      console.log("Transaction restored successfully");
+      console.log("Transaction restored successfully.");
 
-      // ✅ Add restored transaction back to the list
-      setTransactions((prevTransactions) => [...prevTransactions, response.data.transaction]);
+      // ✅ Add back to transactions list
+      setTransactions((prev) => [...prev, response.data.transaction]);
 
-      // ✅ Hide the undo option and clear the deleted transaction
+      // ✅ Hide Undo button & clear deleted transaction
       setShowUndo(false);
       setDeletedTransaction(null);
     } else {
@@ -283,6 +290,42 @@ const handleUndoDelete = async () => {
   }
 };
 
+// ✅ Countdown timer logic
+useEffect(() => {
+  if (showUndo && countdown > 0) {
+    const timer = setTimeout(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }
+
+  // When countdown reaches 0, remove Undo button
+  if (countdown === 0) {
+    setShowUndo(false);
+    setDeletedTransaction(null);
+  }
+}, [showUndo, countdown]);
+
+// ✅ Hard delete permanently after timeout
+const handleHardDelete = async (transactionId) => {
+  try {
+    console.log("Permanently deleting transaction:", transactionId);
+
+    const response = await axios.delete(
+      `http://localhost:4000/api/v1/hardDeleteTransaction/${transactionId}`
+    );
+
+    if (response.status === 200) {
+      console.log("Transaction permanently deleted.");
+      setDeletedTransaction(null);
+    } else {
+      console.error("Failed to permanently delete transaction:", response.data.message);
+    }
+  } catch (error) {
+    console.error("Error permanently deleting transaction:", error.message);
+  }
+};
 
   // Add New Transaction to MongoDB
   const handleAddSubmit = async (e) => {
@@ -312,11 +355,22 @@ const handleUndoDelete = async () => {
   return (
     <>
       <Container>
-        {showUndo && (
-          <Alert variant="warning" onClose={() => setShowUndo(false)} dismissible>
-            Transaction deleted! <Button variant="link" onClick={handleUndoDelete}>Undo</Button>
-          </Alert>
-        )}
+        
+      {showUndo && (
+        <Alert variant="warning" className="d-flex align-items-center">
+          <span className="me-auto">Transaction deleted! Undo within {countdown}s</span>
+          <Button variant="link" onClick={handleUndoDelete} className="me-2">
+            Undo
+          </Button>
+          <ProgressBar
+            animated
+            striped
+            now={(countdown / 30) * 100} // Progress bar percentage
+            variant="danger"
+            style={{ width: "100px", height: "5px" }}
+          />
+        </Alert>
+      )}
         {selectedTransactions.length > 0 && (
         <Button
           variant="danger"
@@ -326,6 +380,8 @@ const handleUndoDelete = async () => {
           Delete Selected ({selectedTransactions.length})
         </Button>
       )}
+
+
 
         
 
