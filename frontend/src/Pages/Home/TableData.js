@@ -14,6 +14,8 @@ const TableData = () => {
   const [currId, setCurrId] = useState(null);
   const [deletedTransaction, setDeletedTransaction] = useState(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [selectedTransactions, setSelectedTransactions] = useState([]);
+
 
   const [values, setValues] = useState({
     title: "",
@@ -129,6 +131,71 @@ const getUserIdByEmail = async (userEmail) => {
     return null;
   }
 };
+// multiple deletion
+const handleSelectTransaction = (transactionId) => {
+  setSelectedTransactions((prevSelected) =>
+    prevSelected.includes(transactionId)
+      ? prevSelected.filter((id) => id !== transactionId) // Remove if already selected
+      : [...prevSelected, transactionId] // Add if not selected
+  );
+};
+
+// Handle "Select All" functionality
+const handleSelectAll = () => {
+  if (selectedTransactions.length === transactions.length) {
+    setSelectedTransactions([]); // Deselect all
+  } else {
+    setSelectedTransactions(transactions.map((item) => item._id)); // Select all
+  }
+};
+
+const handleBulkDelete = async () => {
+  if (selectedTransactions.length === 0) {
+    console.error("No transactions selected for deletion.");
+    return;
+  }
+
+  try {
+    const userEmail = localStorage.getItem("userEmail");
+
+    if (!userEmail) {
+      console.error("User email not found. Ensure the user is logged in.");
+      return;
+    }
+
+    const userId = await getUserIdByEmail(userEmail);
+
+    if (!userId) {
+      console.error("Failed to fetch userId for email:", userEmail);
+      return;
+    }
+
+    console.log("Deleting transactions:", selectedTransactions);
+
+    const response = await axios.put(
+      `http://localhost:4000/api/v1/deleteTransactions`, // New API route
+      { userId, transactionIds: selectedTransactions }, // Send multiple transaction IDs
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    if (response.status === 200) {
+      console.log("Transactions deleted successfully");
+
+      // Remove deleted transactions from UI
+      setTransactions((prevTransactions) =>
+        prevTransactions.filter((t) => !selectedTransactions.includes(t._id))
+      );
+
+      // Clear selection
+      setSelectedTransactions([]);
+    } else {
+      console.error("Failed to delete transactions:", response.data);
+    }
+  } catch (error) {
+    console.error("Error deleting transactions:", error.response?.data || error.message);
+  }
+};
+
 
 // Function to delete a transaction
 const handleDeleteClick = async (transactionId) => {
@@ -250,43 +317,69 @@ const handleUndoDelete = async () => {
             Transaction deleted! <Button variant="link" onClick={handleUndoDelete}>Undo</Button>
           </Alert>
         )}
+        {selectedTransactions.length > 0 && (
+        <Button
+          variant="danger"
+          className="mb-3"
+          onClick={handleBulkDelete}
+        >
+          Delete Selected ({selectedTransactions.length})
+        </Button>
+      )}
 
         
 
-        <Table responsive="md" className="data-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Title</th>
-              <th>Amount</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody className="text-white">
-            {transactions && transactions.length > 0 ? (
-              transactions.map((item) => (
-                <tr key={item._id}>
-                  <td>{moment(item.date).format("YYYY-MM-DD")}</td>
-                  <td>{item.title}</td>
-                  <td>{item.amount}</td>
-                  <td>{item.transactionType}</td>
-                  <td>{item.category}</td>
-                  <td>
-                    <EditNoteIcon sx={{ cursor: "pointer" }} onClick={() => handleEditClick(item._id)} />
-                    <DeleteForeverIcon sx={{ color: "red", cursor: "pointer" }} onClick={() => handleDeleteClick(item._id)} />
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="text-center">No transactions found</td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
+<Table responsive="md" className="data-table">
+  <thead>
+    <tr>
+      <th>
+        <input
+          type="checkbox"
+          checked={selectedTransactions.length === transactions.length && transactions.length > 0}
+          onChange={handleSelectAll}
+        />
+      </th>
+      <th>Date</th>
+      <th>Title</th>
+      <th>Amount</th>
+      <th>Type</th>
+      <th>Category</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody className="text-white">
+    {transactions && transactions.length > 0 ? (
+      transactions.map((item) => (
+        <tr key={item._id}>
+          <td>
+            <input
+              type="checkbox"
+              checked={selectedTransactions.includes(item._id)}
+              onChange={() => handleSelectTransaction(item._id)}
+            />
+          </td>
+          <td>{moment(item.date).format("YYYY-MM-DD")}</td>
+          <td>{item.title}</td>
+          <td>{item.amount}</td>
+          <td>{item.transactionType}</td>
+          <td>{item.category}</td>
+          <td>
+            <EditNoteIcon sx={{ cursor: "pointer" }} onClick={() => handleEditClick(item._id)} />
+            <DeleteForeverIcon sx={{ color: "red", cursor: "pointer" }} onClick={() => handleDeleteClick(item._id)} />
+          </td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+        <td colSpan="7" className="text-center">No transactions found</td>
+      </tr>
+    )}
+  </tbody>
+</Table>
+
       </Container>
+     
+
 
       {/* Add Transaction Modal */}
       <Modal show={showAdd} onHide={() => setShowAdd(false)} centered>

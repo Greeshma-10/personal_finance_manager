@@ -183,3 +183,41 @@ export const restoreTransactionController = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const deleteMultipleTransactionsController = async (req, res) => {
+  try {
+    const { userId, transactionIds } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+
+    if (!transactionIds || transactionIds.length === 0) {
+      return res.status(400).json({ success: false, message: "No transactions selected" });
+    }
+
+    console.log("Deleting transactions:", transactionIds);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Soft delete transactions
+    await Transaction.updateMany(
+      { _id: { $in: transactionIds } },
+      { $set: { isDeleted: true } }
+    );
+
+    // Remove transactions from user's list
+    user.transactions = user.transactions.filter(
+      (t) => !transactionIds.includes(t.toString())
+    );
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Transactions deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
