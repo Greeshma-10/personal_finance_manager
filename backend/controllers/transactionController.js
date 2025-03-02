@@ -91,7 +91,14 @@ export const getUserIdByEmailController = async (req, res) => {
 export const deleteTransactionController = async (req, res) => {
   try {
     const { id: transactionId } = req.params;
-    const userId = req.query.userId || req.headers["userid"]; // ✅ Get userId from query or headers
+    const { userId } = req.body;
+
+    console.log("Received delete request for transaction:", transactionId);
+    console.log("User ID received:", userId);
+
+    if (!transactionId) {
+      return res.status(400).json({ success: false, message: "Transaction ID is required" });
+    }
 
     if (!userId) {
       return res.status(400).json({ success: false, message: "User ID is required" });
@@ -102,19 +109,23 @@ export const deleteTransactionController = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const transaction = await Transaction.findByIdAndDelete(transactionId);
+    // ✅ Soft delete the transaction
+    const transaction = await Transaction.findByIdAndUpdate(
+      transactionId,
+      { isDeleted: true },
+      { new: true }
+    );
+
     if (!transaction) {
       return res.status(404).json({ success: false, message: "Transaction not found" });
     }
 
-    user.transactions = user.transactions.filter((t) => t.toString() !== transactionId);
-    await user.save();
-
-    return res.status(200).json({ success: true, message: "Transaction successfully deleted" });
+    return res.status(200).json({ success: true, message: "Transaction successfully deleted", transaction });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ✅ UPDATE TRANSACTION
 export const updateTransactionController = async (req, res) => {
@@ -145,3 +156,30 @@ export const updateTransactionController = async (req, res) => {
   }
 };
 
+export const restoreTransactionController = async (req, res) => {
+  try {
+    const { transactionId, userId } = req.body;
+
+    if (!transactionId || !userId) {
+      return res.status(400).json({ success: false, message: "Transaction ID and User ID are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction || transaction.isDeleted === false) {
+      return res.status(404).json({ success: false, message: "Transaction not found or not deleted" });
+    }
+
+    // Restore the transaction
+    transaction.isDeleted = false;
+    await transaction.save();
+
+    return res.status(200).json({ success: true, message: "Transaction restored successfully", transaction });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

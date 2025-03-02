@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const transactionSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -26,13 +27,17 @@ const transactionSchema = new mongoose.Schema({
         type: Date,
         required: [true, "Date is required"],
     },
-    user:{
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
     createdAt: {
         type: Date,
         default: new Date(),
+    },
+    isDeleted: {  // ✅ Added Soft Delete Field
+        type: Boolean,
+        default: false,
     }
 });
 

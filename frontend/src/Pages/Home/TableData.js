@@ -131,31 +131,38 @@ const getUserIdByEmail = async (userEmail) => {
 };
 
 // Function to delete a transaction
-// Function to delete a transaction
 const handleDeleteClick = async (transactionId) => {
   try {
-    const userEmail = localStorage.getItem("userEmail"); // ✅ Get stored email
+    const userEmail = localStorage.getItem("userEmail");
 
     if (!userEmail) {
       console.error("User email not found. Ensure the user is logged in.");
       return;
     }
 
-    const userId = await getUserIdByEmail(userEmail); // ✅ Fetch userId dynamically
+    const userId = await getUserIdByEmail(userEmail);
 
     if (!userId) {
       console.error("Failed to fetch userId for email:", userEmail);
       return;
     }
 
-    const response = await axios.delete(
-      `http://localhost:4000/api/v1/deleteTransaction/${transactionId}?userId=${userId}`
+    console.log("Sending delete request with:", { userId, transactionId });
+
+    // ✅ Ensure PUT request has correct data
+    const response = await axios.put(
+      `http://localhost:4000/api/v1/deleteTransaction/${transactionId}`,
+      { userId }, // Send userId in the request body
+      { headers: { "Content-Type": "application/json" } } // Ensure JSON format
     );
 
     if (response.status === 200) {
       console.log("Transaction deleted successfully");
 
-      // Update state after successful deletion
+      setDeletedTransaction(response.data.transaction);
+      setShowUndo(true);
+
+      // ✅ Remove from UI
       setTransactions((prevTransactions) =>
         prevTransactions.filter((t) => t._id !== transactionId)
       );
@@ -163,9 +170,10 @@ const handleDeleteClick = async (transactionId) => {
       console.error("Failed to delete transaction:", response.data);
     }
   } catch (error) {
-    console.error("Error deleting transaction:", error);
+    console.error("Error deleting transaction:", error.response?.data || error.message);
   }
 };
+
 
 const handleUndoDelete = async () => {
   if (!deletedTransaction) return;
@@ -185,16 +193,19 @@ const handleUndoDelete = async () => {
       return;
     }
 
-    const response = await axios.post("http://localhost:4000/api/v1/restoreTransaction", {
+    // ✅ Restore the soft-deleted transaction
+    const response = await axios.put("http://localhost:4000/api/v1/restoreTransaction", {
       transactionId: deletedTransaction._id,
       userId: userId,
     });
 
     if (response.data.success) {
-      // Restore the deleted transaction to the state
+      console.log("Transaction restored successfully");
+
+      // ✅ Add restored transaction back to the list
       setTransactions((prevTransactions) => [...prevTransactions, response.data.transaction]);
 
-      // Hide the undo option and clear the deleted transaction
+      // ✅ Hide the undo option and clear the deleted transaction
       setShowUndo(false);
       setDeletedTransaction(null);
     } else {
@@ -204,6 +215,7 @@ const handleUndoDelete = async () => {
     console.error("Error restoring transaction:", error);
   }
 };
+
 
   // Add New Transaction to MongoDB
   const handleAddSubmit = async (e) => {
